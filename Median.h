@@ -1,4 +1,4 @@
-#ifndef _MEDIAN_H_
+﻿#ifndef _MEDIAN_H_
 #define _MEDIAN_H_
 
 // 線形リスト構造体
@@ -35,6 +35,7 @@ public:
     void init()
     {
         isFirst = true;
+        value = 0;
     }
 
     // 中央値を計算する

@@ -1,4 +1,4 @@
-// 移動平均値と移動中央値のテスト
+﻿// 移動平均値と移動中央値のテスト
 
 #include <stdio.h>
 #include <math.h>

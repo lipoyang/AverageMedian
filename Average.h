@@ -1,4 +1,4 @@
-#ifndef _AVERAGE_H_
+﻿#ifndef _AVERAGE_H_
 #define _AVERAGE_H_
 
 // 移動平均演算器
@@ -30,6 +30,7 @@ public:
     void init()
     {
         isFirst = true;
+        value = 0;
     }
 
     // 平均値を計算する
