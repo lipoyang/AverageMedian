@@ -1,6 +1,10 @@
 ﻿#ifndef _MEDIAN_H_
 #define _MEDIAN_H_
 
+#ifdef MEDIAN_MEMORY_SAVE
+#include "Median_MemorySave.h"
+#else
+
 // 線形リスト構造体
 template <typename TYPE>
 struct MedianList {
@@ -114,5 +118,7 @@ public:
 #define Median_create(TYPE, size, name) \
     MedianList<TYPE> _ ## name ## _buff[size]; \
     Median<TYPE> name(_ ## name ## _buff, size)
+
+#endif
 
 #endif
