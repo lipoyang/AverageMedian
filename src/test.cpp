@@ -13,9 +13,8 @@ Median_create(float, 32, median);
 
 int main(void)
 {
-    int error = 0;
-
     // 移動平均値のテスト
+    int error = 0;
     average.init(); // 初期化
     for (int i = 0; i < DATA_SIZE; i++) {
         float output_val = average.calc(input_data[i]); // 移動平均値の計算
