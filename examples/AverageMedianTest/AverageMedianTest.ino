@@ -20,7 +20,7 @@ void setup() {
 }
 
 void loop() {
-  uint16_t x = (float)analogRead(A1);
+  uint16_t x = (uint16_t)analogRead(A1);
   
   digitalWrite(2, HIGH);
   // 移動平均の計算
