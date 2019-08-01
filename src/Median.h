@@ -1,34 +1,26 @@
 ﻿#ifndef _MEDIAN_H_
 #define _MEDIAN_H_
 
-#ifdef MEDIAN_MEMORY_SAVE
-#include "Median_MemorySave.h"
-#else
-
-// 線形リスト構造体
-template <typename TYPE>
-struct MedianList {
-    TYPE value;
-    MedianList *next;
-};
-
-// 移動中央値演算器
+// 移動中央値演算器 (省メモリ版)
 template <typename TYPE>
 class Median
 {
 public:
-    TYPE value;             // 中央値
+    TYPE value;     // 中央値
 
 private:
-    int  size;              // 線形リストのバッファのサイズ
-    MedianList<TYPE> *buff; // 線形リストのバッファ
-    MedianList<TYPE> root;  // 線形リストのルート
-    int   index;            // インデックス
-    bool  isFirst;          // 最初のサンプルか？
+    TYPE *buff;     // リングバッファ
+    int  size;      // リングバッファのサイズ
+    int  index;     // リングバッファのインデックス
+    TYPE m1;        // 中央値(小) (偶数個の場合に使用)
+    TYPE m2;        // 中央値(大) (偶数個の場合に使用)
+    bool isFirst;   // 最初のサンプルか？
 
 public:
     // コンストラクタ
-    Median(MedianList<TYPE> *buff, int size)
+    // buff: リングバッファ
+    // size: リングバッファのサイズ
+    Median(TYPE *buff, int size)
     {
         this->buff = buff;
         this->size = size;
@@ -49,76 +41,155 @@ public:
     {
         if (isFirst)
         {
-            // 最初のデータときに線形リストを初期化する。
-            MedianList<TYPE> *node = &root;
+            // 最初のデータのときリングバッファと中央値を初期化する
             for (int i = 0; i < size; i++) {
-                MedianList<TYPE> *new_node = &buff[i];
-                new_node->value = input_val;
-                node->next = new_node;
-                node = node->next;
+                buff[i] = input_val;
             }
             value = input_val;
+            m1 = m2 = input_val;
             index = 0;
             isFirst = false;
         }
         else
         {
-            // (1) いちばん古いデータを捨てる
-            MedianList<TYPE> *node = &root;
-            for (int i = 0; i < size; i++) {
-                if (node->next == &buff[index]) {
-                    // つなぎかえ(ノード削除)
-                    node->next = node->next->next;
-                    break;
-                }
-                else {
-                    node = node->next;
-                }
-            }
-            // (2) 新しいデータを挿入
-            MedianList<TYPE> *new_node = &buff[index]; // (1)で削除したノードの再利用
-            new_node->value = input_val;
-            node = &root;
-            bool inserted = false;
-            for (int i = 0; i < size - 1; i++) {
-                if (new_node->value > node->next->value) {
-                    // つなぎかえ(ノード挿入)
-                    new_node->next = node->next;
-                    node->next = new_node;
-                    inserted = true;
-                    break;
-                }
-                else {
-                    node = node->next;
-                }
-            }
-            if (!inserted) {
-                node->next = new_node;
-            }
-            // (3) 中央値を取得
-            node = &root;
-            for (int i = 0; i < size / 2; i++) {
-                node = node->next;
-            }
-            if ((size & 1) == 0) {
-                value = (node->value + node->next->value) / 2; // 偶数個なら中央の2個の平均を取る
-            }else{
-                value = node->next->value; // 奇数個なら中央の値を取る
-            }
+            // いちばん古いデータを捨てて新しいデータを入れる
+            TYPE old_val = buff[index];
+            buff[index] = input_val;
 
+            // 奇数個の場合
+            if ((size & 1) != 0) {
+                // 現在の中央値より大きい値が入り、現在の中央値以下の値が出たとき
+                if ((input_val > value) && (old_val <= value)) {
+                    // 現在の中央値の次に小さいのが次の中央値
+                    int hcnt, ecnt;
+                    TYPE n = next_min(value, &hcnt, &ecnt);
+                    // ただし現在の中央値より大きい値が過半数でないなら現在の中央値はダブっている
+                    if (hcnt > (size / 2)) {
+                        value = n;
+                    }
+                }
+                // 現在の中央値より小さい値が入り、現在の中央値以上の値が出たとき
+                else if ((input_val < value) && (old_val >= value)) {
+                    // 現在の中央値の次に大きいのが次の中央値
+                    int lcnt, ecnt;
+                    TYPE n = next_max(value, &lcnt, &ecnt);
+                    // mより小さい値が過半数でないならmはダブっている
+                    if (lcnt > (size / 2)) {
+                        value = n;
+                    }
+                }
+            }
+            // 偶数個の場合
+            else {
+                // 現在の中央値(大)より大きい値が入り、現在の中央値(大)以下の値が出たとき
+                if ((input_val > m2) && (old_val <= m2)) {
+                    int hcnt, ecnt;
+                    TYPE n = next_min(m2, &hcnt, &ecnt);
+                    if (hcnt == (size / 2)) {
+                        if (m2 != old_val) {
+                            m1 = m2;
+                        }
+                        m2 = n;
+                        value = (m2 + m1) / 2;
+                    }
+                    else if ((hcnt + ecnt) > (size / 2)) {
+                        m1 = m2;
+                        value = m2;
+                    }
+                }
+                // 現在の中央値(小)より小さい値が入り、現在の中央値(小)以上の値が出たとき
+                else if ((input_val < m1) && (old_val >= m1)) {
+                    int lcnt, ecnt;
+                    TYPE n = next_max(m1, &lcnt, &ecnt);
+                    if (lcnt == (size / 2)) {
+                        if (m1 != old_val) {
+                            m2 = m1;
+                        }
+                        m1 = n;
+                        value = (m2 + m1) / 2;
+                    }
+                    else if ((lcnt + ecnt) > (size / 2)) {
+                        m2 = m1;
+                        value = m1;
+                    }
+                }
+                // 中央値(大)を新しい値にする場合
+                else if((input_val < m2) && (old_val >= m2)){
+                    m2 = input_val;
+                    value = (m2 + m1) / 2;
+                }
+                // 中央値(小)を新しい値にする場合
+                else if ((input_val > m1) && (old_val <= m1)) {
+                    m1 = input_val;
+                    value = (m2 + m1) / 2;
+                }
+            }
             // index更新
             index++;
             if (index >= size) index = 0;
         }
         return value;
     }
+private:
+    // mの次に小さい値を探す (ダブりを考慮)
+    // hcnt: mより大きい値の数
+    // ecnt: mと等しい値の数
+    TYPE next_min(TYPE m, int* hcnt, int* ecnt)
+    {
+        // mより大きい中で最小の値を探す
+        *hcnt = 0;
+        *ecnt = 0;
+        TYPE n = 0;
+        bool first = true;
+        for (int i = 0; i < size; i++) {
+            TYPE x = buff[i];
+            if (x > m) {
+                (*hcnt)++;
+                if (first) {
+                    first = false;
+                    n = x;
+                }else if (x < n) {
+                    n = x;
+                }
+            } else if (x == m) {
+                (*ecnt)++;
+            }
+        }
+        return n;
+    }
+
+    // mの次に大きい値を探す (ダブりを考慮)
+    // lcnt: mより小さい値の数
+    // ecnt: mと等しい値の数
+    TYPE next_max(TYPE m, int* lcnt, int* ecnt)
+    {
+        // mより小さい中で最大の値を探す
+        *lcnt = 0;
+        *ecnt = 0;
+        TYPE n = 0;
+        bool first = true;
+        for (int i = 0; i < size; i++) {
+            TYPE x = buff[i];
+            if (x < m) {
+                (*lcnt)++;
+                if (first) {
+                    first = false;
+                    n = x;
+                }
+                else if (x > n) {
+                    n = x;
+                }
+            } else if (x == m) {
+                (*ecnt)++;
+            }
+        }
+        return n;
+    }
 };
 
 // Medianのインスタンスを生成するマクロ
 #define Median_create(TYPE, size, name) \
-    MedianList<TYPE> _ ## name ## _buff[size]; \
+    TYPE _ ## name ## _buff[size]; \
     Median<TYPE> name(_ ## name ## _buff, size)
-
-#endif
 
 #endif
