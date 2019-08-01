@@ -2,8 +2,8 @@
 
 #include <stdio.h>
 #include <math.h>
-#include "Average.h"
-#include "Median.h"
+#include "../src/Average.h"
+#include "../src/Median.h"
 #include "test_data.h" // テスト用入力データと期待値データ (Excelで作成)
 
 // float型・32サンプルの移動平均値演算器の生成 (マクロ)
